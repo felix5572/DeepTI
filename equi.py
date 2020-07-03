@@ -74,6 +74,8 @@ def _gen_lammps_input (conf_file,
         ret += 'fix             1 all npt temp ${TEMP} ${TEMP} ${TAU_T} aniso ${PRES} ${PRES} ${TAU_P}\n'
     elif ens == 'npt-tri' :
         ret += 'fix             1 all npt temp ${TEMP} ${TEMP} ${TAU_T} tri ${PRES} ${PRES} ${TAU_P}\n'
+    elif ens == 'npt-xy' :
+        ret += 'fix             1 all npt temp ${TEMP} ${TEMP} ${TAU_T} x ${PRES} ${PRES} ${TAU_P} y ${PRES} ${PRES} ${TAU_P} z ${PRES} ${PRES} ${TAU_P} couple xy\n'
     elif ens == 'nve' :
         ret += 'fix             1 all nve\n'
     else :
@@ -257,6 +259,7 @@ def _compute_thermo (lmplog, natoms, stat_skip, stat_bsize) :
     pxz, pxze = block_avg(data[:,18], skip = stat_skip, block_size = stat_bsize)
     pyz, pyze = block_avg(data[:,19], skip = stat_skip, block_size = stat_bsize)
     thermo_info = {}
+    thermo_info['natoms'] = natoms
     thermo_info['p'] = pa
     thermo_info['p_err'] = pe
     thermo_info['v'] = va / natoms 
@@ -297,7 +300,7 @@ def _compute_thermo (lmplog, natoms, stat_skip, stat_bsize) :
     return thermo_info
 
 def _print_thermo_info(info, more_head = '') :
-    ptr  = '# thermodynamics  %20s %20s  %s\n' % ('value', 'err', more_head)
+    ptr  = '# thermodynamics  %20s %20s  %s %s\n' % ('value', 'err', str(info['natoms'])+' atoms', more_head)
     ptr += '# E        [eV]:  %20.8f %20.8f\n' % (info['e'], info['e_err'])
     ptr += '# H        [eV]:  %20.8f %20.8f\n' % (info['h'], info['h_err'])
     ptr += '# T         [K]:  %20.8f %20.8f\n' % (info['t'], info['t_err'])
@@ -321,7 +324,7 @@ def _print_thermo_info(info, more_head = '') :
     ptr += '# water density [kg/m^3] : %10.5f (%10.5f)' % (rho, rho_err)
     print(ptr)
 
-def post_task(iter_name, natoms = None, is_water = True) :
+def post_task(iter_name, natoms = None, is_water = False) :
     j_file = os.path.join(iter_name, 'in.json')
     jdata = json.load(open(j_file))
     if natoms == None :
@@ -329,8 +332,11 @@ def post_task(iter_name, natoms = None, is_water = True) :
         natoms = lib.lammps.get_natoms(equi_conf)
         if 'copies' in jdata :
             natoms *= np.prod(jdata['copies'])
+    # print('~~','natoms=',natoms)
     if is_water :
         nmols = natoms // 3
+    else:
+        nmols = natoms
     stat_skip = jdata['stat_skip']
     stat_bsize = jdata['stat_bsize']
     log_file = os.path.join(iter_name, 'log.lammps')

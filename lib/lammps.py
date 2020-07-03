@@ -24,6 +24,7 @@ def _is_n_number(inputs, nn) :
     return True, res
 
 def get_thermo(filename) :
+    # print('~~~',filename)
     with open(filename, 'r') as fp :
         fc = fp.read().split('\n')
     for sl in range(len(fc)) :

@@ -85,6 +85,8 @@ def _gen_lammps_input (conf_file,
         ret += 'fix             1 all npt temp ${TEMP} ${TEMP} ${TAU_T} aniso ${PRES} ${PRES} ${TAU_P}\n'
     elif ens == 'npt-tri' :
         ret += 'fix             1 all npt temp ${TEMP} ${TEMP} ${TAU_T} tri ${PRES} ${PRES} ${TAU_P}\n'
+    elif ens == 'npt-xy' :
+        ret += 'fix             1 all npt temp ${TEMP} ${TEMP} ${TAU_T} x ${PRES} ${PRES} ${TAU_P} y ${PRES} ${PRES} ${TAU_P} z ${PRES} ${PRES} ${TAU_P} couple xy\n'
     elif ens == 'nve' :
         ret += 'fix             1 all nve\n'
     else :
@@ -361,11 +363,15 @@ def post_tasks(iter_name, jdata, Eo, Eo_err = 0, To = None, natoms = None, schem
     all_print.append(integrand)
     all_print.append(all_e)
     all_print.append(all_e_err)
+    
+    all_e_divide_T=np.asarray(all_e)/np.asarray(all_t)
+    all_print.append(all_e_divide_T)
+
     all_print = np.array(all_print)
     np.savetxt(os.path.join(iter_name, 'ti.out'), 
                all_print.T, 
                fmt = '%.8e', 
-               header = 't/p Integrand U/V U/V_err')
+               header = 't/p Integrand U/V U/V_err U/T')
 
     info0 = _compute_thermo(os.path.join(all_tasks[ 0], 'log.lammps'), natoms, stat_skip, stat_bsize)
     info1 = _compute_thermo(os.path.join(all_tasks[-1], 'log.lammps'), natoms, stat_skip, stat_bsize)
@@ -405,17 +411,25 @@ def post_tasks(iter_name, jdata, Eo, Eo_err = 0, To = None, natoms = None, schem
     else :    
         all_temps, all_press, all_fe, all_fe_err, all_fe_sys_err \
             = _thermo_inte(jdata, Eo, Eo_err, all_t, integrand, integrand_err, scheme = scheme)
-
+    
+    all_temps=np.asarray(all_temps)
+    all_fe_divide_T=np.asarray(all_fe)/np.asarray(all_temps)
+    all_fe_to_H_divide_T_temp=list(-(all_fe_divide_T[:-2]-all_fe_divide_T[2:])/(all_temps[:-2]-all_temps[2:])*all_temps[1:-1]) # *all_temps[1:-1])
+    all_fe_to_H_divide_T_temp.insert(0,0.00)
+    all_fe_to_H_divide_T_temp.append(0.00)
+    all_fe_to_H_divide_T=np.asarray(all_fe_to_H_divide_T_temp)
+    all_fe_to_H=all_fe_to_H_divide_T_temp*all_temps
+    
     if 'nvt' == ens :
-        print('#%8s  %20s  %9s  %9s  %9s' % ('T(ctrl)', 'F', 'stat_err', 'inte_err', 'err'))
+        print('#%8s  %20s  %9s  %9s  %9s  %9s %15s' % ('T(ctrl)', 'F', 'stat_err', 'inte_err', 'err', 'F/T', '-T*d(F/T)/dT, -T^2*d(F/T)/dT'))
         for ii in range(len(all_temps)) :
-            print ('%9.2f  %20.12f  %9.2e  %9.2e  %9.2e' 
-                   % (all_temps[ii], all_fe[ii], all_fe_err[ii], all_fe_sys_err[ii], np.linalg.norm([all_fe_err[ii], all_fe_sys_err[ii]])))
+            print ('%9.2f  %20.12f  %9.2e  %9.2e  %9.2e  %15.8e  %15.8e %15.8e' 
+                   % (all_temps[ii], all_fe[ii], all_fe_err[ii], all_fe_sys_err[ii], np.linalg.norm([all_fe_err[ii], all_fe_sys_err[ii]]), all_fe_divide_T[ii], all_fe_to_H_divide_T[ii], all_fe_to_H[ii]))
     elif 'npt' in ens :
-        print('#%8s  %15s  %20s  %9s  %9s  %9s' % ('T(ctrl)', 'P(ctrl)', 'F', 'stat_err', 'inte_err', 'err'))
+        print('#%8s  %15s  %20s  %9s  %9s  %9s  %9s %15s' % ('T(ctrl)', 'P(ctrl)', 'F', 'stat_err', 'inte_err', 'err', 'F/T', '-T*d(F/T)/dT, -T^2*d(F/T)/dT'))
         for ii in range(len(all_temps)) :
-            print ('%9.2f  %15.8e  %20.12f  %9.2e  %9.2e  %9.2e' 
-                   % (all_temps[ii], all_press[ii], all_fe[ii], all_fe_err[ii], all_fe_sys_err[ii], np.linalg.norm([all_fe_err[ii], all_fe_sys_err[ii]])))
+            print ('%9.2f  %15.8e  %20.12f  %9.2e  %9.2e  %9.2e  %15.8e  %15.8e %15.8e' 
+            % (all_temps[ii],all_press[ii],all_fe[ii],all_fe_err[ii],all_fe_sys_err[ii],np.linalg.norm([all_fe_err[ii],all_fe_sys_err[ii]]),all_fe_divide_T[ii],all_fe_to_H_divide_T[ii],all_fe_to_H[ii]))
 
 
 def post_tasks_mbar(iter_name, jdata, Eo, natoms = None) :

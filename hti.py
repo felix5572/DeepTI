@@ -28,16 +28,18 @@ def _ff_lj_on(lamb,
     alpha_lj = sparam['alpha_lj']
     rcut = sparam['rcut']
     epsilon = sparam['epsilon']
-    sigma_oo = sparam['sigma_oo']
-    sigma_oh = sparam['sigma_oh']
-    sigma_hh = sparam['sigma_hh']
+    sigma = sparam['sigma']
+    # sigma_oo = sparam['sigma_oo']
+    # sigma_oh = sparam['sigma_oh']
+    # sigma_hh = sparam['sigma_hh']
     activation = sparam['activation']
     ret = ''
     ret += 'variable        EPSILON equal %f\n' % epsilon
     ret += 'pair_style      lj/cut/soft %f %f %f  \n' % (nn, alpha_lj, rcut)
-    ret += 'pair_coeff      1 1 ${EPSILON} %f %f\n' % (sigma_oo, activation)
-    ret += 'pair_coeff      1 2 ${EPSILON} %f %f\n' % (sigma_oh, activation)
-    ret += 'pair_coeff      2 2 ${EPSILON} %f %f\n' % (sigma_hh, activation)
+    ret += 'pair_coeff      * * ${EPSILON} %f %f\n' % (sigma, activation)
+    # ret += 'pair_coeff      1 1 ${EPSILON} %f %f\n' % (sigma_oo, activation)
+    # ret += 'pair_coeff      1 2 ${EPSILON} %f %f\n' % (sigma_oh, activation)
+    # ret += 'pair_coeff      2 2 ${EPSILON} %f %f\n' % (sigma_hh, activation)
     ret += 'fix             tot_pot all adapt/fep 0 pair lj/cut/soft epsilon * * v_LAMBDA scale yes\n'
     ret += 'compute         e_diff all fep ${TEMP} pair lj/cut/soft epsilon * * v_EPSILON\n'    
     return ret
@@ -50,18 +52,20 @@ def _ff_deep_on(lamb,
     alpha_lj = sparam['alpha_lj']
     rcut = sparam['rcut']
     epsilon = sparam['epsilon']
-    sigma_oo = sparam['sigma_oo']
-    sigma_oh = sparam['sigma_oh']
-    sigma_hh = sparam['sigma_hh']
+    sigma = sparam['sigma']
+    # sigma_oo = sparam['sigma_oo']
+    # sigma_oh = sparam['sigma_oh']
+    # sigma_hh = sparam['sigma_hh']
     activation = sparam['activation']
     ret = ''
     ret += 'variable        EPSILON equal %f\n' % epsilon
     ret += 'variable        ONE equal 1\n'
     ret += 'pair_style      hybrid/overlay deepmd %s lj/cut/soft %f %f %f  \n' % (model, nn, alpha_lj, rcut)
     ret += 'pair_coeff      * * deepmd\n'
-    ret += 'pair_coeff      1 1 lj/cut/soft ${EPSILON} %f %f\n' % (sigma_oo, activation)
-    ret += 'pair_coeff      1 2 lj/cut/soft ${EPSILON} %f %f\n' % (sigma_oh, activation)
-    ret += 'pair_coeff      2 2 lj/cut/soft ${EPSILON} %f %f\n' % (sigma_hh, activation)
+    ret += 'pair_coeff      * *  lj/cut/soft ${EPSILON} %f %f\n' % (sigma, activation)
+    # ret += 'pair_coeff      1 1 lj/cut/soft ${EPSILON} %f %f\n' % (sigma_oo, activation)
+    # ret += 'pair_coeff      1 2 lj/cut/soft ${EPSILON} %f %f\n' % (sigma_oh, activation)
+    # ret += 'pair_coeff      2 2 lj/cut/soft ${EPSILON} %f %f\n' % (sigma_hh, activation)
     ret += 'fix             tot_pot all adapt/fep 0 pair deepmd scale * * v_LAMBDA\n'
     ret += 'compute         e_diff all fep ${TEMP} pair deepmd scale * * v_ONE\n'
     return ret
@@ -74,18 +78,20 @@ def _ff_lj_off(lamb,
     alpha_lj = sparam['alpha_lj']
     rcut = sparam['rcut']
     epsilon = sparam['epsilon']
-    sigma_oo = sparam['sigma_oo']
-    sigma_oh = sparam['sigma_oh']
-    sigma_hh = sparam['sigma_hh']
+    sigma = sparam['sigma']
+    # sigma_oo = sparam['sigma_oo']
+     #sigma_oh = sparam['sigma_oh']
+    # sigma_hh = sparam['sigma_hh']
     activation = sparam['activation']
     ret = ''
     ret += 'variable        EPSILON equal %f\n' % epsilon
     ret += 'variable        INV_EPSILON equal -${EPSILON}\n'
     ret += 'pair_style      hybrid/overlay deepmd %s lj/cut/soft %f %f %f  \n' % (model, nn, alpha_lj, rcut)
     ret += 'pair_coeff      * * deepmd\n'
-    ret += 'pair_coeff      1 1 lj/cut/soft ${EPSILON} %f %f\n' % (sigma_oo, activation)
-    ret += 'pair_coeff      1 2 lj/cut/soft ${EPSILON} %f %f\n' % (sigma_oh, activation)
-    ret += 'pair_coeff      2 2 lj/cut/soft ${EPSILON} %f %f\n' % (sigma_hh, activation)
+    ret += 'pair_coeff      * * lj/cut/soft ${EPSILON} %f %f\n' % (sigma, activation)
+    # ret += 'pair_coeff      1 1 lj/cut/soft ${EPSILON} %f %f\n' % (sigma_oo, activation)
+    # ret += 'pair_coeff      1 2 lj/cut/soft ${EPSILON} %f %f\n' % (sigma_oh, activation)
+    # ret += 'pair_coeff      2 2 lj/cut/soft ${EPSILON} %f %f\n' % (sigma_hh, activation)
     ret += 'fix             tot_pot all adapt/fep 0 pair lj/cut/soft epsilon * * v_INV_LAMBDA scale yes\n'
     ret += 'compute         e_diff all fep ${TEMP} pair lj/cut/soft epsilon * * v_INV_EPSILON\n'    
     return ret
@@ -258,6 +264,8 @@ def _gen_lammps_input (conf_file,
             ret += ' zero no\n'            
     elif ens == 'npt-iso' or ens == 'npt':
         ret += 'fix             1 all npt temp ${TEMP} ${TEMP} ${TAU_T} iso ${PRES} ${PRES} ${TAU_P}\n'
+    elif ens == 'npt-xy' :
+        ret += 'fix             1 all npt temp ${TEMP} ${TEMP} ${TAU_T} x ${PRES} ${PRES} ${TAU_P} y ${PRES} ${PRES} ${TAU_P} z ${PRES} ${PRES} ${TAU_P} couple xy\n'
     elif ens == 'nve' :
         ret += 'fix             1 all nve\n'
     else :
@@ -338,6 +346,8 @@ def _gen_lammps_input_ideal (conf_file,
         ret += 'fix             2 all langevin ${TEMP} ${TEMP} ${TAU_T} %d zero yes\n' % (np.random.randint(0, 2**16))
     elif ens == 'npt-iso' or ens == 'npt':
         ret += 'fix             1 all npt temp ${TEMP} ${TEMP} ${TAU_T} iso ${PRES} ${PRES} ${TAU_P}\n'
+    elif ens == 'npt-xy' :
+        ret += 'fix             1 all npt temp ${TEMP} ${TEMP} ${TAU_T} x ${PRES} ${PRES} ${TAU_P} y ${PRES} ${PRES} ${TAU_P} z ${PRES} ${PRES} ${TAU_P} couple xy\n'
     elif ens == 'nve' :
         ret += 'fix             1 all nve\n'
     else :
@@ -477,6 +487,8 @@ def _make_tasks(iter_name, jdata, ref, switch = 'one-step', step = 'both', link 
             ens = 'nvt'
         if langevin:
             ens = 'nvt-langevin'        
+        if jdata.get('ens', False):
+            ens = jdata.get('ens')
         if ref == 'einstein' :
             lmp_str \
                 = _gen_lammps_input('conf.lmp',
@@ -687,39 +699,52 @@ def _post_tasks(iter_name, jdata, natoms = None, scheme = 's', switch = 'one-ste
     all_es_err = []
     all_ed = []
     all_ed_err = []
+    all_ep = []
+    all_ep_err = []
 
+    print("# task  lambda   spring_pot_eng  deepmd_pot_eng")
     for ii in all_tasks :
         log_name = os.path.join(ii, 'log.lammps')
         data = get_thermo(log_name)
         np.savetxt(os.path.join(ii, 'data'), data, fmt = '%.6e')
         sa, se = block_avg(data[:, 8], skip = stat_skip, block_size = stat_bsize)
         da, de = block_avg(data[:, 9], skip = stat_skip, block_size = stat_bsize)
+        pa, pe = block_avg(data[:, 2], skip = stat_skip, block_size = stat_bsize)
         sa /= natoms
         se /= np.sqrt(natoms)
         da /= natoms
         de /= np.sqrt(natoms)
+        pa /= natoms
+        pe /= np.sqrt(natoms)
         lmda_name = os.path.join(ii, 'lambda.out')
         ll = float(open(lmda_name).read())
         all_lambda.append(ll)
         all_es.append(sa)
         all_ed.append(da)
+        all_ep.append(pa)
         all_es_err.append(se)
         all_ed_err.append(de)
+        all_ep_err.append(pe)
+        print(f"{ii}  {ll}  {sa}  {da}")
 
     all_lambda = np.array(all_lambda)
     all_es = np.array(all_es)
     all_ed = np.array(all_ed)
+    all_ep = np.array(all_ep)
     all_es_err = np.array(all_es_err)
     all_ed_err = np.array(all_ed_err)
+    all_ep_err = np.array(all_ep_err)
     if switch == 'one-step' or switch == 'two-step':
         if step == 'both':
             de = all_ed / all_lambda - all_es / (1 - all_lambda)
             all_err = np.sqrt(np.square(all_ed_err / all_lambda) + np.square(all_es_err / (1 - all_lambda)))
         elif step == 'deep_on':
             de = all_ed / all_lambda
+            # de = all_ep / all_lambda
             all_err = all_ed_err / all_lambda
         elif step == 'spring_off':
             de = -all_es / (1 - all_lambda)
+            # de = -all_ep / (1 - all_lambda)
             all_err = all_es_err / (1 - all_lambda)
         else:
             raise RuntimeError('unknow step', step)
@@ -752,6 +777,7 @@ def _post_tasks(iter_name, jdata, natoms = None, scheme = 's', switch = 'one-ste
                header = 'lmbda dU dU_err Ud Us Ud_err Us_err')
 
     new_lambda, i, i_e, s_e = integrate_range(all_lambda, de, all_err, scheme = scheme)
+    print('~~', new_lambda, i , i_e, s_e)
     if new_lambda[-1] != all_lambda[-1] :
         if new_lambda[-1] == all_lambda[-2]:
             _, i1, i_e1, s_e1 = integrate_range(all_lambda[-2:], de[-2:], all_err[-2:], scheme='t')
